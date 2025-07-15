@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:macless_haystack/accessory/accessory_icon.dart';
 import 'package:macless_haystack/accessory/accessory_model.dart';
@@ -8,13 +9,19 @@ import 'package:macless_haystack/location/location_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 
+import '../preferences/user_preferences_model.dart';
+
 class AccessoryMap extends StatefulWidget {
   final MapController? mapController;
+  final Accessory? followedAccessory;
+  final Function(Accessory?)? onMapMoved;
 
   /// Displays a map with all accessories at their latest position.
   const AccessoryMap({
     super.key,
     this.mapController,
+    this.followedAccessory,
+    this.onMapMoved,
   });
 
   @override
@@ -85,6 +92,13 @@ class _AccessoryMapState extends State<AccessoryMap> {
     }
   }
 
+  void centerOnAccessory(Accessory? accessory) {
+    if (accessory != null && accessory.lastLocation != null) {
+      _mapController.fitCamera(CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints([accessory.lastLocation!])));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<AccessoryRegistry, LocationModel>(builder:
@@ -93,9 +107,11 @@ class _AccessoryMapState extends State<AccessoryMap> {
       // Zoom map to fit all accessories on first accessory update
       var accessories = accessoryRegistry.accessories;
 
-      if (Settings.getValue<bool>(shouldAutoresizeOnLocationsKey,
+      if (widget.followedAccessory != null) {
+        centerOnAccessory(widget.followedAccessory);
+      } else if (Settings.getValue<bool>(shouldAutoresizeOnLocationsKey,
           defaultValue: true)!) {
-          fitToContent(accessories, locationModel.here);
+        fitToContent(accessories, locationModel.here);
       }
 
       return FlutterMap(
@@ -105,6 +121,11 @@ class _AccessoryMapState extends State<AccessoryMap> {
             maxZoom: 18.0,
             minZoom: 2.0,
             initialZoom: 13.0,
+            onPositionChanged: (position, hasGesture) {
+              if (hasGesture && widget.followedAccessory != null) {
+                widget.onMapMoved?.call(null);
+              }
+            },
             backgroundColor: Theme.of(context).colorScheme.surface,
             interactionOptions: const InteractionOptions(
                 enableMultiFingerGestureRace: true,
@@ -161,8 +182,34 @@ class _AccessoryMapState extends State<AccessoryMap> {
                         width: 50,
                         height: 50,
                         point: accessory.lastLocation!,
-                        child: AccessoryIcon(
-                            icon: accessory.icon, color: accessory.color),
+                        child: accessory == widget.followedAccessory
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  AccessoryIcon(
+                                      icon: accessory.icon,
+                                      color: accessory.color),
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surface, // Background for contrast
+                                      ),
+                                      child: Icon(
+                                        Icons.push_pin,
+                                        color: Theme.of(context).primaryColor,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : AccessoryIcon(
+                                icon: accessory.icon, color: accessory.color),
                       )),
             ],
           ),

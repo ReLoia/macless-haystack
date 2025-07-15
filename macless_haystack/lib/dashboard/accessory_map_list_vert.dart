@@ -8,6 +8,7 @@ import 'package:macless_haystack/location/location_model.dart';
 import 'package:macless_haystack/map/map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../accessory/accessory_model.dart';
 import '../callbacks.dart';
 
 class AccessoryMapListVertical extends StatefulWidget {
@@ -29,6 +30,18 @@ class AccessoryMapListVertical extends StatefulWidget {
 class _AccessoryMapListVerticalState extends State<AccessoryMapListVertical> {
   final MapController _mapController = MapController();
 
+  Accessory? _followedAccessory;
+
+  void _setFollowedAccessory(Accessory? accessory) {
+    setState(() {
+      if (_followedAccessory != accessory) {
+        _followedAccessory = accessory;
+      } else {
+        _followedAccessory = null;
+      }
+    });
+  }
+
   void _centerPoint(LatLng point) {
     _mapController
         .fitCamera(CameraFit.bounds(bounds: LatLngBounds.fromPoints([point])));
@@ -45,6 +58,8 @@ class _AccessoryMapListVerticalState extends State<AccessoryMapListVertical> {
               fit: FlexFit.tight,
               child: AccessoryMap(
                 mapController: _mapController,
+                followedAccessory: _followedAccessory,
+                onMapMoved: _setFollowedAccessory
               ),
             ),
             Flexible(
@@ -53,6 +68,7 @@ class _AccessoryMapListVerticalState extends State<AccessoryMapListVertical> {
                 loadLocationUpdates: widget.loadLocationUpdates,
                 saveOrderUpdatesCallback: widget.saveOrderUpdatesCallback,
                 centerOnPoint: _centerPoint,
+                onAccessorySelected: _setFollowedAccessory,
               ),
             ),
           ],

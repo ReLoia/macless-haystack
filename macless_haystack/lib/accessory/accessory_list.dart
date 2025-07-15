@@ -19,6 +19,7 @@ class AccessoryList extends StatefulWidget {
   final LoadLocationUpdatesCallback loadLocationUpdates;
   final SaveOrderUpdatesCallback saveOrderUpdatesCallback;
   final void Function(LatLng point)? centerOnPoint;
+  final void Function(Accessory? accessory)? onAccessorySelected;
 
   /// Display a location overview all accessories in a concise list form.
   ///
@@ -29,6 +30,7 @@ class AccessoryList extends StatefulWidget {
     required this.loadLocationUpdates,
     this.centerOnPoint,
     required this.saveOrderUpdatesCallback,
+    this.onAccessorySelected
   });
 
   @override
@@ -172,6 +174,7 @@ class _AccessoryListState extends State<AccessoryList> {
                           if (lastLocation != null) {
                             widget.centerOnPoint?.call(lastLocation);
                           }
+                          widget.onAccessorySelected?.call(accessory);
                         }
                       },
                       onLongPress: !accessory.isActive
