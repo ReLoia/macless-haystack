@@ -7,6 +7,7 @@ class AccessoryIconModel {
     "key.fill", "mappin", "globe", "crown.fill",
     "gift.fill", "car.fill", "bicycle", "figure.walk",
     "heart.fill", "hare.fill", "tortoise.fill", "eye.fill",
+    "wallet.fill", "headphones.fill"
   ];
 
   /// A mapping from the cupertino icon names to the material icon names.
@@ -30,6 +31,8 @@ class AccessoryIconModel {
     'hare.fill': Icons.pets,
     'tortoise.fill': Icons.bug_report,
     'eye.fill': Icons.visibility,
+    'wallet.fill': Icons.wallet,
+    'headphones.fill': Icons.headset,
   };
 
   /// Looks up the equivalent material icon for the cupertino icon [iconName].
