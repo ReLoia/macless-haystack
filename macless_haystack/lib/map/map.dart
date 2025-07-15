@@ -92,7 +92,11 @@ class _AccessoryMapState extends State<AccessoryMap> {
             LocationModel locationModel, Widget? child) {
       // Zoom map to fit all accessories on first accessory update
       var accessories = accessoryRegistry.accessories;
-      fitToContent(accessories, locationModel.here);
+
+      if (Settings.getValue<bool>(shouldAutoresizeOnLocationsKey,
+          defaultValue: true)!) {
+          fitToContent(accessories, locationModel.here);
+      }
 
       return FlutterMap(
         mapController: _mapController,
