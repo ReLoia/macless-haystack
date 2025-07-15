@@ -192,17 +192,17 @@ class _AccessoryMapState extends State<AccessoryMap> {
                                   Align(
                                     alignment: Alignment.topRight,
                                     child: Container(
-                                      padding: const EdgeInsets.all(4),
+                                      padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: Theme.of(context)
                                             .colorScheme
-                                            .surface, // Background for contrast
+                                            .surface,
                                       ),
                                       child: Icon(
                                         Icons.push_pin,
-                                        color: Theme.of(context).primaryColor,
-                                        size: 18,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                        size: 16,
                                       ),
                                     ),
                                   ),
