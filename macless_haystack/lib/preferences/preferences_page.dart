@@ -26,6 +26,7 @@ class _PreferencesPageState extends State<PreferencesPage> {
           children: <Widget>[
             getLocationTile(),
             getFetchOnStartupTile(),
+            getShouldAutoresizeOnLocations(),
             getUrlTile(),
             getUserTile(),
             getPassTile(),
@@ -51,6 +52,14 @@ class _PreferencesPageState extends State<PreferencesPage> {
           locationModel.cancelLocationUpdates();
         }
       },
+    );
+  }
+
+  getShouldAutoresizeOnLocations() {
+    return SwitchSettingsTile(
+      settingKey: shouldAutoresizeOnLocationsKey,
+      defaultValue: true,
+      title: 'Auto resize map on location updates',
     );
   }
 
