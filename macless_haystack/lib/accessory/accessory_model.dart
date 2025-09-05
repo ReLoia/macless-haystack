@@ -86,6 +86,8 @@ class Accessory {
 
   bool hasChangedFlag = false;
 
+  bool onlyShown = false;
+
   /// Creates an accessory with the given properties.
   Accessory(
       {required this.id,

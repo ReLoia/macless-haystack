@@ -122,7 +122,8 @@ class _AccessoryMapState extends State<AccessoryMap> {
             minZoom: 2.0,
             initialZoom: 13.0,
             onPositionChanged: (position, hasGesture) {
-              if (hasGesture && widget.followedAccessory != null) {
+              // If the map was moved, unfollow the accessory if it isn't onlyFollowed (only accessory shown on map)
+              if (hasGesture && widget.followedAccessory != null && widget.followedAccessory!.onlyShown == false) {
                 widget.onMapMoved?.call(null);
               }
             },
@@ -173,44 +174,53 @@ class _AccessoryMapState extends State<AccessoryMap> {
             userAgentPackageName: 'de.dchristl.headlesshaystack',
           ),
           MarkerLayer(
-            markers: [
+            markers: (widget.followedAccessory != null && widget.followedAccessory!.onlyShown == true) ? [] : [
               ...accessories
                   .where((accessory) => accessory.isActive)
                   .where((accessory) => accessory.lastLocation != null)
+                  .where((accessory) => accessory != widget.followedAccessory)
                   .map((accessory) => Marker(
                         rotate: true,
                         width: 50,
                         height: 50,
                         point: accessory.lastLocation!,
-                        child: accessory == widget.followedAccessory
-                            ? Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  AccessoryIcon(
-                                      icon: accessory.icon,
-                                      color: accessory.color),
-                                  Align(
-                                    alignment: Alignment.topRight,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .surface,
-                                      ),
-                                      child: Icon(
-                                        Icons.push_pin,
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : AccessoryIcon(
-                                icon: accessory.icon, color: accessory.color),
+                        child: AccessoryIcon(
+                            icon: accessory.icon, color: accessory.color),
                       )),
+            ],
+          ),
+          MarkerLayer(
+            markers: [
+              if (widget.followedAccessory != null &&
+                  widget.followedAccessory!.lastLocation != null)
+                Marker(
+                  width: 50,
+                  height: 50,
+                  point: widget.followedAccessory!.lastLocation!,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AccessoryIcon(
+                          icon: widget.followedAccessory!.icon,
+                          color: widget.followedAccessory!.color),
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.surface,
+                          ),
+                          child: Icon(
+                            Icons.push_pin,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
             ],
           ),
           MarkerLayer(markers: [

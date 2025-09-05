@@ -173,14 +173,24 @@ class _AccessoryListState extends State<AccessoryList> {
                           var lastLocation = accessory.lastLocation;
                           if (lastLocation != null) {
                             widget.centerOnPoint?.call(lastLocation);
+                            // Only set the accessory as onlyShown if held on the icon
+                            accessory.onlyShown = false;
+                            widget.onAccessorySelected?.call(accessory);
                           }
-                          widget.onAccessorySelected?.call(accessory);
                         }
                       },
                       onLongPress: !accessory.isActive
                           ? null
                           : () async {
-                              await widget.loadLocationUpdates(accessory);
+                              if (accessory.isActive) {
+                                var lastLocation = accessory.lastLocation;
+                                if (lastLocation != null) {
+                                  widget.centerOnPoint?.call(lastLocation);
+                                  // onlyShown makes sure that the accessory is only shown in the map
+                                  accessory.onlyShown = true;
+                                  widget.onAccessorySelected?.call(accessory);
+                                }
+                              }
                             },
                     );
                   }),
