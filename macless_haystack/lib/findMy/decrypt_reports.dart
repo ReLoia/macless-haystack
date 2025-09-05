@@ -97,6 +97,8 @@ class DecryptReports {
         default:
           batteryStatus = null;
       }
+    } else if (status == 0) {
+      batteryStatus = AccessoryBatteryStatus.ok; // FindMyFlipper firmware
     }
     final latitudeDec = latitude / 10000000.0;
     final longitudeDec = longitude / 10000000.0;
