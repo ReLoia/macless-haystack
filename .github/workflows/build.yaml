@@ -193,6 +193,13 @@ jobs:
         uses: hugo19941994/delete-draft-releases@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete existing tag if exist
+        uses: ClementTsang/delete-tag-and-release@v0.3.1
+        continue-on-error: true
+        with:
+          tag_name: v${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
