@@ -7,12 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Clean up disk space
+        run: |
+            sudo rm -rf /usr/share/dotnet
+            sudo rm -rf /opt/ghc
+            sudo rm -rf "/usr/local/share/boost"
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+            df -h  # Zeigt freien Speicher
       - name: Prepare and checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set environment variables
-        run: echo "VERSION=$(cat version)" >> $GITHUB_ENV     
+        run: echo "VERSION=$(cat version)" >> $GITHUB_ENV
       - name: Fail if Git-Tag already exist on main
-        if: github.ref == 'refs/heads/main'  
+        if: github.ref == 'refs/heads/main'
         run: |
           TAG="v${{ env.VERSION }}"
           git fetch
@@ -32,58 +39,80 @@ jobs:
           git submodule update --init --recursive
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}  
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push docker development image
-        if: github.ref == 'refs/heads/dev'  
-        uses: docker/build-push-action@v5
+        if: github.ref == 'refs/heads/dev'
+        uses: docker/build-push-action@v6
         with:
           context: ./endpoint
           platforms: linux/amd64,linux/arm64
           push: true
           file: ./endpoint/Dockerfile_dev
-          tags: christld/macless-haystack:latest-dev,christld/macless-haystack:v${{ env.VERSION }}-${{ github.sha }},   
+          tags: christld/macless-haystack:latest-dev,christld/macless-haystack:v${{ env.VERSION }}-${{ github.sha }},
       - name: Build and push docker main image
-        if: github.ref == 'refs/heads/main'  
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: "{{defaultContext}}:endpoint"
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: christld/macless-haystack:latest,christld/macless-haystack:v${{ env.VERSION }},        
+          tags: christld/macless-haystack:latest,christld/macless-haystack:v${{ env.VERSION }},
       - name: Install ARM Toolchain
         uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
           release: '10-2020-q4'
-      - name: Install Nordic Toolchain
-        run: |
-          wget https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-0/nrf-command-line-tools_10.23.0_amd64.deb
-          sudo dpkg -i nrf-command-line-tools_10.23.0_amd64.deb
+
       - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
-      - name: Cache Flutter dependencies
-        uses: actions/cache@v3
-        with:
-          path: /opt/hostedtoolcache/flutter
-          key: ${{ runner.OS }}-flutter-install-cache
+          cache: 'gradle'
       - uses: subosito/flutter-action@v2
         with:
           cache: true
+          channel: stable
+      - name: Cache Flutter
+        uses: actions/cache@v5
+        id: flutter-cache
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle/caches
+            ./macless_haystack/.dart_tool
+            ./macless_haystack/build/web
+          key: flutter-${{ runner.os }}-${{ hashFiles('macless_haystack/pubspec.lock') }}
+      - name: Android Build
+        working-directory: ./macless_haystack
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+        run: |
+          if [ "${{ steps.flutter-cache.outputs.cache-hit }}" != "true" ]; then
+            flutter pub get
+          fi
+          flutter test
+          flutter build apk --release --build-name=${{ env.VERSION }}
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/android-application.apk
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-application
+          path: ./macless_haystack/build/app/outputs/flutter-apk/android-application.apk
       - name: GH-Page Build
         working-directory: ./macless_haystack
         run: |
-          flutter pub get
+          if [ "${{ steps.flutter-cache.outputs.cache-hit }}" != "true" ]; then
+            flutter pub get
+          fi
           flutter build web --profile --base-href "/macless-haystack/"
       - name: Deploy to Github Pages
-        if: github.ref == 'refs/heads/dev'  
+        if: github.ref == 'refs/heads/dev'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: ./macless_haystack/build/web
@@ -91,8 +120,9 @@ jobs:
       - name: Web Build
         working-directory: ./macless_haystack
         run: |
-          flutter pub get
-          flutter test
+          if [ "${{ steps.flutter-cache.outputs.cache-hit }}" != "true" ]; then
+            flutter pub get
+          fi
           flutter build web --release
       - name: Copy files to web application
         run: |
@@ -101,31 +131,29 @@ jobs:
           cd ./macless_haystack/build/webapplication
           zip -r webapplication.zip .
       - name: Upload Web Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: webapplication
           path: ./macless_haystack/build/webapplication
-      - name: Android Build
-        working-directory: ./macless_haystack
+
+
+      - name: Cache Nordic DEB
+        uses: actions/cache@v5
+        id: nrf-cache
+        with:
+          path: /tmp/nrf-cache
+          key: nrf-toolchain-10.23.0-amd64-deb
+      - name: Install Nordic Toolchain
         run: |
-          flutter build apk --release --build-name=${{ env.VERSION }}   
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/android-application.apk
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-application
-          path: ./macless_haystack/build/app/outputs/flutter-apk/android-application.apk
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-      - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
+          mkdir -p /tmp/nrf-cache
+          if [ ! -f "/tmp/nrf-cache/nrf-command-line-tools_10.23.0_amd64.deb" ]; then
+              echo "Downloading Nordic Toolchain..."
+              wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-0/nrf-command-line-tools_10.23.0_amd64.deb -O /tmp/nrf-cache/nrf-command-line-tools_10.23.0_amd64.deb
+          else
+              echo "Using cached DEB file"
+          fi        
+          sudo dpkg -i /tmp/nrf-cache/nrf-command-line-tools_10.23.0_amd64.deb
+          echo "/opt/nordic/nrf-command-line-tools/bin" >> $GITHUB_PATH
       - name: Build NRF5x firmware
         run: |
           cd firmware/nrf5x/
@@ -133,18 +161,28 @@ jobs:
           make clean
           NRF_MODEL=nrf51 make build
       - name: Upload NRF5x firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nrf5x-firmware
           path: |
             firmware/nrf5x/compiled/*.bin
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install PlatformIO Core
+        run: | 
+          pip install --upgrade platformio
+          pip install idf-component-manager
       - name: Build ESP32 firmware
         run: |
+          pio pkg list --project-dir firmware/ESP32/
           pio run -d firmware/ESP32/
           cd firmware/ESP32/.pio/build/esp32dev/
           zip -r esp32-firmware.zip firmware.bin partitions.bin bootloader.bin
       - name: Upload ESP32 firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: esp32-firmware
           path: |
@@ -153,6 +191,13 @@ jobs:
             firmware/ESP32/.pio/build/esp32dev/bootloader.bin
       - name: Delete old drafts
         uses: hugo19941994/delete-draft-releases@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete existing tag if exist
+        uses: ClementTsang/delete-tag-and-release@v0.3.1
+        continue-on-error: true
+        with:
+          tag_name: v${{ env.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release

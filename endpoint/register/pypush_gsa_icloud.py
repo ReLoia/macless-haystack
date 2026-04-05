@@ -284,9 +284,9 @@ def sms_second_factor(dsid, idms_token):
             code = input(f"Enter SMS 2FA code if you have received it in the meantime, otherwise press Enter: ")
 
             if code == "":
-                code = request_code(headers)
+                code = request_code(headers,sms_id)
         else:
-            code = request_code(headers)
+            code = request_code(headers,sms_id)
 
     body['securityCode'] = {'code': code}
 
@@ -314,13 +314,15 @@ def sms_second_factor(dsid, idms_token):
             "2FA unsuccessful. Maybe wrong code or wrong number. Check your account details.")
 
 
-def request_code(headers):
+def request_code(headers,sms_id):
     # This will send the 2FA code to the user's phone over SMS
     # We don't care about the response, it's just some HTML with a form for entering the code
     # Easier to just use a text prompt
-    body = {"phoneNumber": {"id": 1}, "mode": "sms"}
+    logger.debug(headers)
+    body = {"phoneNumber": {"id": sms_id}, "mode": "sms"}
+    logger.info(f"Sending SMS via id {sms_id}")
     with requests.put(
-            "https://gsa.apple.com/auth/verify/phone/",
+            "https://idmsa.apple.com/appleauth/auth/verify/phone",
             json=body,
             headers=headers,
             verify=False,
